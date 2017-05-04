@@ -4,6 +4,7 @@
 	write(Stream, ''), close(Stream),
 	nb_setval(numJogadas, 0).
 
+
 /* se há uma mina, encerra o jogo */
 posicao(L, C) :-
 	mina(L, C),
@@ -22,18 +23,8 @@ posicao(L, C) :-
 posicao(L, C) :-
 	valor(L, C, 0),
 	escreveJogada(L,C),
-	Lantes is L-1,
-	Ldepois is L+1,
-	Cantes is C-1,
-	Cdepois is C+1,
-	posicao(Lantes, Cantes),
-	posicao(Lantes, C),
-	posicao(Lantes, Cdepois),
-	posicao(L, Cantes),
-	posicao(L, Cdepois),
-	posicao(Ldepois, Cantes),
-	posicao(Ldepois, C),
-	posicao(Ldepois, Cdepois).
+	escreverLinhaNoJogo('/*AMBIENTE*/'),
+	posicao_recursiva(L, C, [], _).
 
 /* quando estrapola a linha não dá erro */
 posicao(L, _) :- 
@@ -46,6 +37,50 @@ posicao(_, C) :-
 	tabuleiro(N),
 	C > N.
 posicao(_, C) :- C=<0.
+
+
+/* CONSULTA RECURSIVA */
+/* Se a casa já foi recursivamente visitada nada é feito */
+posicao_recursiva(L, C, Visitados, Visitados):-
+	member((L,C), Visitados).
+
+/* quando estrapola a linha não dá erro */
+posicao_recursiva(L, _, Visitados, Visitados) :- 
+	tabuleiro(N),
+	L > N.
+posicao_recursiva(L, _, Visitados, Visitados) :- L=<0.
+
+/* quando estrapola a coluna também não dá erro */
+posicao_recursiva(_, C, Visitados, Visitados) :- 
+	tabuleiro(N),
+	C > N.
+posicao_recursiva(_, C, Visitados, Visitados) :- C=<0.
+
+/* quando um valor é encontrado não propaga a recursão */
+posicao_recursiva(L, C, Visitados, [(L,C)|Visitados]):-
+	valor(L, C, N),
+	N \= 0,
+	escreveValorPuro(L, C, N).
+
+/* quando nenhum valor é encontrado prossegue recursão */
+posicao_recursiva(L, C, Visitados, NovoVisitados):-
+	append([(L,C)], Visitados, Visitados2),
+	valor(L, C, 0),
+	Lantes is L-1,
+	Ldepois is L+1,
+	Cantes is C-1,
+	Cdepois is C+1,
+	posicao_recursiva(Lantes, Cantes, Visitados2, Visitados3),
+	posicao_recursiva(Lantes, C, Visitados3, Visitados4),
+	posicao_recursiva(Lantes, Cdepois, Visitados4, Visitados5),
+	posicao_recursiva(L, Cantes, Visitados5, Visitados6),
+	posicao_recursiva(L, Cdepois, Visitados6, Visitados7),
+	posicao_recursiva(Ldepois, Cantes, Visitados7, Visitados8),
+	posicao_recursiva(Ldepois, C, Visitados8, Visitados9),
+	posicao_recursiva(Ldepois, Cdepois, Visitados9, NovoVisitados).
+
+
+
 
 /* escreve o comando dado pelo usuário */
 escreveJogada(L, C) :-
@@ -64,6 +99,9 @@ escreveJogada(L, C) :-
 /* escreve valor lido no 'ambiente.pl' */
 escreveValor(L, C, N) :-
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
+	escreveValorPuro(L, C, N).
+
+escreveValorPuro(L, C, N) :-
 	atom_concat('valor(', L, Str),
 	atom_concat(Str, ',', Str1),
 	atom_concat(Str1, C, Str2),
@@ -84,4 +122,12 @@ jogo_encerrado :-
 escreverLinhaNoJogo(L) :-
 	open('jogo.pl', append, Stream), 
 	write(Stream, L),  nl(Stream), 
-	close(Stream). 
+	close(Stream).
+
+
+test(0, Li, [(0,1)|Li]).
+test(N, Li, Lf):-
+	N>0,
+	append([N], Li, L),
+	X is N-1,
+	test(X,L,Lf).
