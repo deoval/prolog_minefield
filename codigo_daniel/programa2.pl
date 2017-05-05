@@ -66,6 +66,7 @@ posicao_recursiva(L, C, Visitados, [(L,C)|Visitados]):-
 posicao_recursiva(L, C, Visitados, NovoVisitados):-
 	append([(L,C)], Visitados, Visitados2),
 	valor(L, C, 0),
+	escreveValorPuro(L, C, 0), /* é mesmo pra imprimir? */
 	Lantes is L-1,
 	Ldepois is L+1,
 	Cantes is C-1,
