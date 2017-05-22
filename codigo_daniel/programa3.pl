@@ -6,6 +6,7 @@
 
 jogue :- jogarFirstAleatorio(), jogar.
 
+jogar :- current_predicate(fim/0),!.
 jogar :- jogarAleatorio().
 
 /*TODO tornar numeros 1,6 e 25 em variaveis lidas dos arquivos.*/
@@ -15,7 +16,7 @@ jogarAleatorio() :- random(1,6,X), random(1,6,Y),
 					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogar.
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
-jogarAleatorio() :- qtdCasasAbertas(C), C < 25, !, jogar.
+jogarAleatorio() :- qtdCasasAbertas(C), C < 22, !, jogar.
 jogarAleatorio() :- win(). 
 
 win() :- print('vitória').
@@ -27,29 +28,57 @@ countQtdCasasAbertas([],0).
 countQtdCasasAbertas([_|L],R):- countQtdCasasAbertas(L,C), R is C+1.
 
 
-inserirPosicaoComMina(X,Y) :- valor(X,Y,V), qtdCasasFechadasAoRedor(X,Y,C), 
-							V = C, assertz(temMina(X,Y)).
+verificarVizinhos(L,C) :-  
+	Lantes is L-1,
+	Ldepois is L+1,
+	Cantes is C-1,
+	Cdepois is C+1,
+	verificaVizinhosComMina(Lantes, Cantes),
+	verificaVizinhosComMina(Lantes, C),
+	verificaVizinhosComMina(Lantes, Cdepois),
+	verificaVizinhosComMina(L, Cantes), 
+	verificaVizinhosComMina(L, Cdepois),
+	verificaVizinhosComMina(Ldepois, Cantes),
+	verificaVizinhosComMina(Ldepois, C),
+	verificaVizinhosComMina(Ldepois, Cdepois),	
+	verificaVizinhosComMina(L, C).	
 
-qtdCasasFechadasAoRedor(L,C,R) :- Lantes is L-1,
+verificaVizinhosComMina(X,Y) :- 
+	current_predicate(casaAberta/2),
+	casaAberta(X,Y),
+	valor(X,Y,V), 
+	qtdCasasFechadasAoRedor(X,Y,C,L), 
+	V = C,
+	loopInsereMina(L).
+
+verificaVizinhosComMina(_,_).
+
+loopInsereMina([X|L]) :- 
+	X = [],!,loopInsereMina(L).
+loopInsereMina([[X,Y]|L]) :-
+	assertz(temMina(X,Y)),loopInsereMina(L).
+loopInsereMina([]).
+
+qtdCasasFechadasAoRedor(L,C,R,[L1,L2,L3,L4,L5,L6,L7,L8]) :- Lantes is L-1,
 								Ldepois is L+1,
 								Cantes is C-1,
 								Cdepois is C+1,
-								casaFechada(Lantes, Cantes, R1),
-								casaFechada(Lantes, C, R2),
-								casaFechada(Lantes, Cdepois, R3),
-								casaFechada(L, Cantes, R4),
-								casaFechada(L, Cdepois, R5),
-								casaFechada(Ldepois, Cantes, R6),
-								casaFechada(Ldepois, C, R7),
-								casaFechada(Ldepois, Cdepois, R8),
+								casaFechada(Lantes, Cantes, R1,L1),
+								casaFechada(Lantes, C, R2,L2),
+								casaFechada(Lantes, Cdepois, R3,L3),
+								casaFechada(L, Cantes, R4,L4),
+								casaFechada(L, Cdepois, R5,L5),
+								casaFechada(Ldepois, Cantes, R6,L6),
+								casaFechada(Ldepois, C, R7,L7),
+								casaFechada(Ldepois, Cdepois, R8,L8),
 								R is R1 + R2 + R3 + R4 + R5 + R6 + R7 + R8.
 
-casaFechada(X,_,0) :- X = 0,!.
-casaFechada(_,Y,0) :- Y = 0,!.
-casaFechada(X,_,0) :- tabuleiro(N), A is N+1, X = A,!.
-casaFechada(_,Y,0) :- tabuleiro(N), A is N+1, Y = A,!.
-casaFechada(X,Y,0) :- current_predicate(casaAberta/2),casaAberta(X,Y),!.
-casaFechada(_,_,1).
+casaFechada(X,_,0,[]) :- X = 0,!.
+casaFechada(_,Y,0,[]) :- Y = 0,!.
+casaFechada(X,_,0,[]) :- tabuleiro(N), A is N+1, X = A,!.
+casaFechada(_,Y,0,[]) :- tabuleiro(N), A is N+1, Y = A,!.
+casaFechada(X,Y,0,[]) :- current_predicate(casaAberta/2),casaAberta(X,Y),!.
+casaFechada(X,Y,1,[X,Y]).
  
 /* se há uma mina, encerra o jogo */
 posicao(L, C) :-
@@ -62,6 +91,7 @@ posicao(L, C) :-
 	valor(L, C, N),
 	N \= 0,
 	assertz(casaAberta(L,C)),
+	verificarVizinhos(L,C),
 	escreveJogada(L,C),	
 	escreveValor(L, C, N).
 
@@ -167,7 +197,8 @@ escreveValorPuro(L, C, N) :-
 jogo_encerrado :-
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
 	escreverLinhaNoJogo('jogo encerrado'),
-	write('jogo encerrado').
+	write('jogo encerrado'),
+	assertz(fim).
 
 /* faz append de uma linha em 'jogo.pl' */
 escreverLinhaNoJogo(L) :-
