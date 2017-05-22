@@ -4,19 +4,21 @@
 	write(Stream, ''), close(Stream),
 	nb_setval(numJogadas, 0).
 
-jogue :- jogarFirstAleatorio(), jogarAleatorio().
+jogue :- jogarFirstAleatorio(), jogar.
+
+jogar :- jogarAleatorio().
 
 /*TODO tornar numeros 1,6 e 25 em variaveis lidas dos arquivos.*/
 jogarFirstAleatorio() :- random(1,6,X), random(1,6,Y), posicao(X,Y).
 
 jogarAleatorio() :- random(1,6,X), random(1,6,Y),
-					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogarAleatorio().
+					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogar.
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
-jogarAleatorio() :- qtdCasasAbertas(C), C < 25, !, jogarAleatorio().
+jogarAleatorio() :- qtdCasasAbertas(C), C < 25, !, jogar.
 jogarAleatorio() :- win(). 
 
-win() :- print('acabou porra').
+win() :- print('vitória').
 
 qtdCasasAbertas(C) :- current_predicate(casaAberta/2),
 						findall(casaAberta(X,Y), casaAberta(X,Y), L),  
@@ -24,12 +26,36 @@ qtdCasasAbertas(C) :- current_predicate(casaAberta/2),
 countQtdCasasAbertas([],0).
 countQtdCasasAbertas([_|L],R):- countQtdCasasAbertas(L,C), R is C+1.
 
+
+inserirPosicaoComMina(X,Y) :- valor(X,Y,V), qtdCasasFechadasAoRedor(X,Y,C), 
+							V = C, assertz(temMina(X,Y)).
+
+qtdCasasFechadasAoRedor(L,C,R) :- Lantes is L-1,
+								Ldepois is L+1,
+								Cantes is C-1,
+								Cdepois is C+1,
+								casaFechada(Lantes, Cantes, R1),
+								casaFechada(Lantes, C, R2),
+								casaFechada(Lantes, Cdepois, R3),
+								casaFechada(L, Cantes, R4),
+								casaFechada(L, Cdepois, R5),
+								casaFechada(Ldepois, Cantes, R6),
+								casaFechada(Ldepois, C, R7),
+								casaFechada(Ldepois, Cdepois, R8),
+								R is R1 + R2 + R3 + R4 + R5 + R6 + R7 + R8.
+
+casaFechada(X,_,0) :- X = 0,!.
+casaFechada(_,Y,0) :- Y = 0,!.
+casaFechada(X,_,0) :- tabuleiro(N), A is N+1, X = A,!.
+casaFechada(_,Y,0) :- tabuleiro(N), A is N+1, Y = A,!.
+casaFechada(X,Y,0) :- current_predicate(casaAberta/2),casaAberta(X,Y),!.
+casaFechada(_,_,1).
+ 
 /* se há uma mina, encerra o jogo */
 posicao(L, C) :-
 	mina(L, C),
 	escreveJogada(L,C),
-	jogo_encerrado,
-	halt().
+	jogo_encerrado.
 
 /* se há um número (!= 0) escreve o valor */
 posicao(L, C) :-
