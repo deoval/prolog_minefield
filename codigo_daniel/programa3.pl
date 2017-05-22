@@ -13,6 +13,10 @@ jogar :- jogarAleatorio().
 jogarFirstAleatorio() :- random(1,6,X), random(1,6,Y), posicao(X,Y).
 
 jogarAleatorio() :- random(1,6,X), random(1,6,Y),
+					current_predicate(casaAberta/2), not(casaAberta(X,Y)),
+					current_predicate(temMina/2), not(temMina(X,Y)), posicao(X,Y), jogar.
+
+jogarAleatorio() :- random(1,6,X), random(1,6,Y),
 					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogar.
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
@@ -21,9 +25,11 @@ jogarAleatorio() :- win().
 
 win() :- print('vitória').
 
-qtdCasasAbertas(C) :- current_predicate(casaAberta/2),
-						findall(casaAberta(X,Y), casaAberta(X,Y), L),  
-							countQtdCasasAbertas(L, C).
+qtdCasasAbertas(C) :- 
+	current_predicate(casaAberta/2),
+	findall(casaAberta(X,Y),
+	casaAberta(X,Y), L),  
+	countQtdCasasAbertas(L, C).
 countQtdCasasAbertas([],0).
 countQtdCasasAbertas([_|L],R):- countQtdCasasAbertas(L,C), R is C+1.
 
@@ -59,19 +65,20 @@ loopInsereMina([[X,Y]|L]) :-
 	assertz(temMina(X,Y)),loopInsereMina(L).
 loopInsereMina([]).
 
-qtdCasasFechadasAoRedor(L,C,R,[L1,L2,L3,L4,L5,L6,L7,L8]) :- Lantes is L-1,
-								Ldepois is L+1,
-								Cantes is C-1,
-								Cdepois is C+1,
-								casaFechada(Lantes, Cantes, R1,L1),
-								casaFechada(Lantes, C, R2,L2),
-								casaFechada(Lantes, Cdepois, R3,L3),
-								casaFechada(L, Cantes, R4,L4),
-								casaFechada(L, Cdepois, R5,L5),
-								casaFechada(Ldepois, Cantes, R6,L6),
-								casaFechada(Ldepois, C, R7,L7),
-								casaFechada(Ldepois, Cdepois, R8,L8),
-								R is R1 + R2 + R3 + R4 + R5 + R6 + R7 + R8.
+qtdCasasFechadasAoRedor(L,C,R,[L1,L2,L3,L4,L5,L6,L7,L8]) :-
+	Lantes is L-1,
+	Ldepois is L+1,
+	Cantes is C-1,
+	Cdepois is C+1,
+	casaFechada(Lantes, Cantes, R1,L1),
+	casaFechada(Lantes, C, R2,L2),
+	casaFechada(Lantes, Cdepois, R3,L3),
+	casaFechada(L, Cantes, R4,L4),
+	casaFechada(L, Cdepois, R5,L5),
+	casaFechada(Ldepois, Cantes, R6,L6),
+	casaFechada(Ldepois, C, R7,L7),
+	casaFechada(Ldepois, Cdepois, R8,L8),
+	R is R1 + R2 + R3 + R4 + R5 + R6 + R7 + R8.
 
 casaFechada(X,_,0,[]) :- X = 0,!.
 casaFechada(_,Y,0,[]) :- Y = 0,!.
@@ -102,7 +109,8 @@ posicao(L, C) :-
 	/*assertz(casaAberta(L,C)), */
 	escreveJogada(L,C),
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
-	posicao_recursiva(L, C, [], _).
+	posicao_recursiva(L, C, [], _),
+	verificarVizinhos(L,C).
 
 /* quando estrapola a linha não dá erro */
 posicao(L, _) :- 
