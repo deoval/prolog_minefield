@@ -34,22 +34,49 @@ countQtdCasasAbertas([],0).
 countQtdCasasAbertas([_|L],R):- countQtdCasasAbertas(L,C), R is C+1.
 
 
-verificarVizinhos(L,C) :-  
+
+
+/* CONSULTA RECURSIVA */
+/* Se a casa já foi recursivamente visitada nada é feito */
+verificarVizinhos(L, C, Visitados, Visitados):-
+	member((L,C), Visitados).
+
+/* quando estrapola a linha não dá erro */
+verificarVizinhos(L, _, Visitados, Visitados) :- 
+	tabuleiro(N),
+	L > N.
+verificarVizinhos(L, _, Visitados, Visitados) :- L=<0.
+
+/* quando estrapola a coluna também não dá erro */
+verificarVizinhos(_, C, Visitados, Visitados) :- 
+	tabuleiro(N),
+	C > N.
+verificarVizinhos(_, C, Visitados, Visitados) :- C=<0.
+
+/* quando um valor é encontrado não propaga a recursão */
+verificarVizinhos(L, C, Visitados, [(L,C)|Visitados]):-
+	valor(L, C, N),
+	N \= 0,
+	verificaVizinhosPorMinas(L, C).
+
+/* quando nenhum valor é encontrado prossegue recursão */
+verificarVizinhos(L, C, Visitados, NovoVisitados):-
+	append([(L,C)], Visitados, Visitados2),
+	valor(L, C, 0),
 	Lantes is L-1,
 	Ldepois is L+1,
 	Cantes is C-1,
 	Cdepois is C+1,
-	verificaVizinhosComMina(Lantes, Cantes),
-	verificaVizinhosComMina(Lantes, C),
-	verificaVizinhosComMina(Lantes, Cdepois),
-	verificaVizinhosComMina(L, Cantes), 
-	verificaVizinhosComMina(L, Cdepois),
-	verificaVizinhosComMina(Ldepois, Cantes),
-	verificaVizinhosComMina(Ldepois, C),
-	verificaVizinhosComMina(Ldepois, Cdepois),	
-	verificaVizinhosComMina(L, C).	
+	verificarVizinhos(Lantes, Cantes, Visitados2, Visitados3),
+	verificarVizinhos(Lantes, C, Visitados3, Visitados4),
+	verificarVizinhos(Lantes, Cdepois, Visitados4, Visitados5),
+	verificarVizinhos(L, Cantes, Visitados5, Visitados6),
+	verificarVizinhos(L, Cdepois, Visitados6, Visitados7),
+	verificarVizinhos(Ldepois, Cantes, Visitados7, Visitados8),
+	verificarVizinhos(Ldepois, C, Visitados8, Visitados9),
+	verificarVizinhos(Ldepois, Cdepois, Visitados9, NovoVisitados).
 
-verificaVizinhosComMina(X,Y) :- 
+verificaVizinhosPorMinas(X,Y) :- 
 	current_predicate(casaAberta/2),
 	casaAberta(X,Y),
 	valor(X,Y,V), 
@@ -57,7 +84,7 @@ verificaVizinhosComMina(X,Y) :-
 	V = C,
 	loopInsereMina(L).
 
-verificaVizinhosComMina(_,_).
+verificaVizinhosPorMinas(_,_).
 
 loopInsereMina([X|L]) :- 
 	X = [],!,loopInsereMina(L).
@@ -98,7 +125,7 @@ posicao(L, C) :-
 	valor(L, C, N),
 	N \= 0,
 	assertz(casaAberta(L,C)),
-	verificarVizinhos(L,C),
+	verificarVizinhos(L, C, [], _),
 	escreveJogada(L,C),	
 	escreveValor(L, C, N).
 
@@ -110,7 +137,7 @@ posicao(L, C) :-
 	escreveJogada(L,C),
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
 	posicao_recursiva(L, C, [], _),
-	verificarVizinhos(L,C).
+	verificarVizinhos(L, C, [], _).
 
 /* quando estrapola a linha não dá erro */
 posicao(L, _) :- 
