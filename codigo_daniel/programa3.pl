@@ -18,7 +18,7 @@ jogarAleatorio(X,Y) :-
 jogarAleatorio(X,Y) :- 
 					current_predicate(temMina/2), temMina(X,Y),!, jogar.
 
-jogarAleatorio(X,Y) :- posicao(X,Y), vitoria().
+jogarAleatorio(X,Y) :- posicao(X,Y), verificarCasasSeguras(X,Y), vitoria().
 
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
@@ -39,10 +39,47 @@ qtdCasasAbertas(C) :-
 countQtdElemLista([],0).
 countQtdElemLista([_|L],R):- countQtdElemLista(L,C), R is C+1.
 
+/* CONSULTA PARA INTELIGENCIA DE ACHAR CASAS SEGURAS */
+verificarCasasSeguras(X,Y) :- 
+	qtdCasasMinaAoRedor(X,Y,M,L),	
+	qtdCasasFechadasAoRedor(X,Y,C,L1),
+	valor(X,Y,V),
+	V = M,
+	loopInsereCasaSegura(L1,L).	
+
+verificarCasasSeguras(_,_).
+
+loopInsereCasaSegura([X|L],LCMinas):-
+	X = [],!,loopInsereCasaSegura(L, LCMinas).
+loopInsereCasaSegura([[X,Y]|L], LCMinas) :- not(member([X,Y],LCMinas)),!,
+	assertz(casaSegura(X,Y)),loopInsereCasaSegura(L,LCMinas).
+loopInsereCasaSegura([X|L],LCMinas) :- loopInsereCasaSegura(L,LCMinas).
+loopInsereCasaSegura([],_).
+
+qtdCasasMinaAoRedor(C,L,R,[L1,L2,L3,L4,L5,L6,L7,L8]) :-
+	Lantes is C-1,
+	Ldepois is C+1,
+	Cantes is L-1,
+	Cdepois is L+1,
+	minaAoRedor(Lantes, Cantes,R1,L1),
+	minaAoRedor(Lantes, C,R2,L2),
+	minaAoRedor(Lantes, Cdepois,R3,L3),
+	minaAoRedor(L, Cantes,R4,L4), 
+	minaAoRedor(L, Cdepois,R5,L5),
+	minaAoRedor(Ldepois, Cantes,R6,L6),
+	minaAoRedor(Ldepois, C,R7,L7),
+	minaAoRedor(Ldepois, Cdepois,R8,L8),
+	R is R1 + R2 + R3 + R4 + R5 + R6 + R7 + R8.
+
+minaAoRedor(X,_,0,[]) :- X = 0,!.
+minaAoRedor(_,Y,0,[]) :- Y = 0,!.
+minaAoRedor(X,_,0,[]) :- tabuleiro(N), A is N+1, X = A,!.
+minaAoRedor(_,Y,0,[]) :- tabuleiro(N), A is N+1, Y = A,!.
+minaAoRedor(X,Y,0,[]) :- current_predicate(temMina/2),not(temMina(X,Y)),!.
+minaAoRedor(X,Y,1,[X,Y]).
 
 
-
-/* CONSULTA RECURSIVA */
+/* CONSULTA RECURSIVA PARA INTELIGENCIA DE ACHAR MINAS */
 /* Se a casa já foi recursivamente visitada nada é feito */
 verificarVizinhos(L, C, Visitados, Visitados):-
 	member((L,C), Visitados).
