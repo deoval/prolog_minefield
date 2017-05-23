@@ -7,23 +7,25 @@
 jogue :- jogarFirstAleatorio(), jogar.
 
 jogar :- current_predicate(fim/0),!.
-jogar :- jogarAleatorio().
+jogar :- random(1,6,X), random(1,6,Y),jogarAleatorio(X,Y).
 
 /*TODO tornar numeros 1,6 e 25 em variaveis lidas dos arquivos.*/
 jogarFirstAleatorio() :- random(1,6,X), random(1,6,Y), posicao(X,Y).
 
-jogarAleatorio() :- random(1,6,X), random(1,6,Y),
-					current_predicate(casaAberta/2), not(casaAberta(X,Y)),
-					current_predicate(temMina/2), not(temMina(X,Y)), posicao(X,Y), jogar.
+jogarAleatorio(X,Y) :- 
+					current_predicate(casaAberta/2), casaAberta(X,Y),!, jogar.
 
-jogarAleatorio() :- random(1,6,X), random(1,6,Y),
-					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogar.
+jogarAleatorio(X,Y) :- 
+					current_predicate(temMina/2), temMina(X,Y),!, jogar.
+
+jogarAleatorio(X,Y) :- posicao(X,Y), vitoria().
+
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
-jogarAleatorio() :- tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
+vitoria() :- tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
 					NCasas is N * N, SMinas is NCasas - M, C < SMinas, !, jogar.
 
-jogarAleatorio() :- win(). 
+vitoria() :- win(). 
 
 win() :- print('vitória').
 
