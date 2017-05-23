@@ -20,18 +20,22 @@ jogarAleatorio() :- random(1,6,X), random(1,6,Y),
 					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogar.
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
-jogarAleatorio() :- qtdCasasAbertas(C), C < 22, !, jogar.
+jogarAleatorio() :- tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
+					NCasas is N * N, SMinas is NCasas - M, C < SMinas, !, jogar.
+
 jogarAleatorio() :- win(). 
 
 win() :- print('vitória').
 
+qtdMinas(M) :- findall(mina(X,Y),mina(X,Y),L), countQtdElemLista(L,M).
+
 qtdCasasAbertas(C) :- 
 	current_predicate(casaAberta/2),
-	findall(casaAberta(X,Y),
-	casaAberta(X,Y), L),  
-	countQtdCasasAbertas(L, C).
-countQtdCasasAbertas([],0).
-countQtdCasasAbertas([_|L],R):- countQtdCasasAbertas(L,C), R is C+1.
+	findall(casaAberta(X,Y),casaAberta(X,Y), L),  
+	countQtdElemLista(L, C).
+
+countQtdElemLista([],0).
+countQtdElemLista([_|L],R):- countQtdElemLista(L,C), R is C+1.
 
 
 verificarVizinhos(L,C) :-  
