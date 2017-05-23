@@ -7,23 +7,25 @@
 jogue :- jogarFirstAleatorio(), jogar.
 
 jogar :- current_predicate(fim/0),!.
-jogar :- jogarAleatorio().
+jogar :- random(1,6,X), random(1,6,Y),jogarAleatorio(X,Y).
 
 /*TODO tornar numeros 1,6 e 25 em variaveis lidas dos arquivos.*/
 jogarFirstAleatorio() :- random(1,6,X), random(1,6,Y), posicao(X,Y).
 
-jogarAleatorio() :- random(1,6,X), random(1,6,Y),
-					current_predicate(casaAberta/2), not(casaAberta(X,Y)),
-					current_predicate(temMina/2), not(temMina(X,Y)), posicao(X,Y), jogar.
+jogarAleatorio(X,Y) :- 
+					current_predicate(casaAberta/2), casaAberta(X,Y),!, jogar.
 
-jogarAleatorio() :- random(1,6,X), random(1,6,Y),
-					current_predicate(casaAberta/2), not(casaAberta(X,Y)), posicao(X,Y), jogar.
+jogarAleatorio(X,Y) :- 
+					current_predicate(temMina/2), temMina(X,Y),!, jogar.
+
+jogarAleatorio(X,Y) :- posicao(X,Y), vitoria().
+
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
-jogarAleatorio() :- tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
+vitoria() :- tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
 					NCasas is N * N, SMinas is NCasas - M, C < SMinas, !, jogar.
 
-jogarAleatorio() :- win(). 
+vitoria() :- win(). 
 
 win() :- print('vitória').
 
@@ -38,49 +40,22 @@ countQtdElemLista([],0).
 countQtdElemLista([_|L],R):- countQtdElemLista(L,C), R is C+1.
 
 
-
-
-/* CONSULTA RECURSIVA */
-/* Se a casa já foi recursivamente visitada nada é feito */
-verificarVizinhos(L, C, Visitados, Visitados):-
-	member((L,C), Visitados).
-
-/* quando estrapola a linha não dá erro */
-verificarVizinhos(L, _, Visitados, Visitados) :- 
-	tabuleiro(N),
-	L > N.
-verificarVizinhos(L, _, Visitados, Visitados) :- L=<0.
-
-/* quando estrapola a coluna também não dá erro */
-verificarVizinhos(_, C, Visitados, Visitados) :- 
-	tabuleiro(N),
-	C > N.
-verificarVizinhos(_, C, Visitados, Visitados) :- C=<0.
-
-/* quando um valor é encontrado não propaga a recursão */
-verificarVizinhos(L, C, Visitados, [(L,C)|Visitados]):-
-	valor(L, C, N),
-	N \= 0,
-	verificaVizinhosPorMinas(L, C).
-
-/* quando nenhum valor é encontrado prossegue recursão */
-verificarVizinhos(L, C, Visitados, NovoVisitados):-
-	append([(L,C)], Visitados, Visitados2),
-	valor(L, C, 0),
+verificarVizinhos(L,C) :-  
 	Lantes is L-1,
 	Ldepois is L+1,
 	Cantes is C-1,
 	Cdepois is C+1,
-	verificarVizinhos(Lantes, Cantes, Visitados2, Visitados3),
-	verificarVizinhos(Lantes, C, Visitados3, Visitados4),
-	verificarVizinhos(Lantes, Cdepois, Visitados4, Visitados5),
-	verificarVizinhos(L, Cantes, Visitados5, Visitados6),
-	verificarVizinhos(L, Cdepois, Visitados6, Visitados7),
-	verificarVizinhos(Ldepois, Cantes, Visitados7, Visitados8),
-	verificarVizinhos(Ldepois, C, Visitados8, Visitados9),
-	verificarVizinhos(Ldepois, Cdepois, Visitados9, NovoVisitados).
+	verificaVizinhosComMina(Lantes, Cantes),
+	verificaVizinhosComMina(Lantes, C),
+	verificaVizinhosComMina(Lantes, Cdepois),
+	verificaVizinhosComMina(L, Cantes), 
+	verificaVizinhosComMina(L, Cdepois),
+	verificaVizinhosComMina(Ldepois, Cantes),
+	verificaVizinhosComMina(Ldepois, C),
+	verificaVizinhosComMina(Ldepois, Cdepois),	
+	verificaVizinhosComMina(L, C).	
 
-verificaVizinhosPorMinas(X,Y) :- 
+verificaVizinhosComMina(X,Y) :- 
 	current_predicate(casaAberta/2),
 	casaAberta(X,Y),
 	valor(X,Y,V), 
@@ -88,7 +63,7 @@ verificaVizinhosPorMinas(X,Y) :-
 	V = C,
 	loopInsereMina(L).
 
-verificaVizinhosPorMinas(_,_).
+verificaVizinhosComMina(_,_).
 
 loopInsereMina([X|L]) :- 
 	X = [],!,loopInsereMina(L).
@@ -129,7 +104,7 @@ posicao(L, C) :-
 	valor(L, C, N),
 	N \= 0,
 	assertz(casaAberta(L,C)),
-	verificarVizinhos(L, C, [], _),
+	verificarVizinhos(L,C),
 	escreveJogada(L,C),	
 	escreveValor(L, C, N).
 
@@ -141,7 +116,7 @@ posicao(L, C) :-
 	escreveJogada(L,C),
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
 	posicao_recursiva(L, C, [], _),
-	verificarVizinhos(L, C, [], _).
+	verificarVizinhos(L,C).
 
 /* quando estrapola a linha não dá erro */
 posicao(L, _) :- 
