@@ -7,23 +7,45 @@
 jogue :- jogarFirstAleatorio(), jogar.
 
 jogar :- current_predicate(fim/0),!.
-jogar :- random(1,6,X), random(1,6,Y),jogarAleatorio(X,Y).
+jogar :- current_predicate(casaSegura/2), casaSegura(X,Y), posicao(X,Y), 
+	retractall(casaSegura(X,Y)),
+	verificarTodasCasasAbertasPorMinasAoRedor(),
+	verificarTodasCasasAbertasPorCasasSeguras(),
+	vitoria().
+
+jogar :- tabuleiro(N), A is N + 1,
+	random(1,A,X), random(1,A,Y),jogarAleatorio(X,Y).
 
 /*TODO tornar numeros 1,6 e 25 em variaveis lidas dos arquivos.*/
-jogarFirstAleatorio() :- random(1,6,X), random(1,6,Y), posicao(X,Y).
+jogarFirstAleatorio() :- 
+	tabuleiro(N), A is N + 1,
+	random(1,A,X), random(1,A,Y), posicao(X,Y), 
+	verificarTodasCasasAbertasPorMinasAoRedor(),
+	verificarTodasCasasAbertasPorCasasSeguras().
 
 jogarAleatorio(X,Y) :- 
-					current_predicate(casaAberta/2), casaAberta(X,Y),!, jogar.
+	current_predicate(casaAberta/2),
+	casaAberta(X,Y),
+	!,
+	vitoria().
 
 jogarAleatorio(X,Y) :- 
-					current_predicate(temMina/2), temMina(X,Y),!, jogar.
+	current_predicate(temMina/2),
+	temMina(X,Y),
+	!,
+	vitoria().
 
-jogarAleatorio(X,Y) :- posicao(X,Y), verificarCasasSeguras(X,Y), vitoria().
+jogarAleatorio(X,Y) :-
+	posicao(X,Y), 
+	verificarTodasCasasAbertasPorMinasAoRedor(),
+	verificarTodasCasasAbertasPorCasasSeguras(),
+	vitoria().
 
 
 /*TODO O 25 tem que ser subtraido do número de minas*/
-vitoria() :- tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
-					NCasas is N * N, SMinas is NCasas - M, C < SMinas, !, jogar.
+vitoria() :-
+	tabuleiro(N), qtdCasasAbertas(C), qtdMinas(M), 
+	NCasas is N * N, SMinas is NCasas - M, C < SMinas, !, jogar.
 
 vitoria() :- win(). 
 
@@ -39,28 +61,42 @@ qtdCasasAbertas(C) :-
 countQtdElemLista([],0).
 countQtdElemLista([_|L],R):- countQtdElemLista(L,C), R is C+1.
 
-/* CONSULTA PARA INTELIGENCIA DE ACHAR CASAS SEGURAS */
-verificarCasasSeguras(X,Y) :- 
-	qtdCasasMinaAoRedor(X,Y,M,L),	
-	qtdCasasFechadasAoRedor(X,Y,C,L1),
-	valor(X,Y,V),
-	V = M,
-	loopInsereCasaSegura(L1,L).	
 
-verificarCasasSeguras(_,_).
+
+/* INTELIGENCIA DE ACHAR CASAS SEGURAS */
+verificarTodasCasasAbertasPorCasasSeguras():-
+	current_predicate(casaAberta/2),!,
+	findall([X,Y],casaAberta(X,Y), L), 
+	loopVerificaCasasSeguras(L).
+verificarTodasCasasAbertasPorCasasSeguras().
+
+loopVerificaCasasSeguras([[X,Y]|L]) :- 
+	verificarCasasSegurasAoRedor(X,Y),
+	loopVerificaCasasSeguras(L).
+loopVerificaCasasSeguras([]).
+
+
+verificarCasasSegurasAoRedor(X,Y) :- 
+	qtdCasasMinaAoRedor(X,Y,QtdMinas,PosicoesMinas),	
+	qtdCasasFechadasAoRedor(X,Y,_,PosicoesFechadas),
+	valor(X,Y,V),
+	V = QtdMinas,
+	loopInsereCasaSegura(PosicoesFechadas,PosicoesMinas).	
+
+verificarCasasSegurasAoRedor(_,_).
 
 loopInsereCasaSegura([X|L],LCMinas):-
 	X = [],!,loopInsereCasaSegura(L, LCMinas).
 loopInsereCasaSegura([[X,Y]|L], LCMinas) :- not(member([X,Y],LCMinas)),!,
 	assertz(casaSegura(X,Y)),loopInsereCasaSegura(L,LCMinas).
-loopInsereCasaSegura([X|L],LCMinas) :- loopInsereCasaSegura(L,LCMinas).
+loopInsereCasaSegura([_|L],LCMinas) :- loopInsereCasaSegura(L,LCMinas).
 loopInsereCasaSegura([],_).
 
-qtdCasasMinaAoRedor(C,L,R,[L1,L2,L3,L4,L5,L6,L7,L8]) :-
-	Lantes is C-1,
-	Ldepois is C+1,
-	Cantes is L-1,
-	Cdepois is L+1,
+qtdCasasMinaAoRedor(L,C,R,[L1,L2,L3,L4,L5,L6,L7,L8]) :-
+	Lantes is L-1,
+	Ldepois is L+1,
+	Cantes is C-1,
+	Cdepois is C+1,
 	minaAoRedor(Lantes, Cantes,R1,L1),
 	minaAoRedor(Lantes, C,R2,L2),
 	minaAoRedor(Lantes, Cdepois,R3,L3),
@@ -79,47 +115,21 @@ minaAoRedor(X,Y,0,[]) :- current_predicate(temMina/2),not(temMina(X,Y)),!.
 minaAoRedor(X,Y,1,[X,Y]).
 
 
-/* CONSULTA RECURSIVA PARA INTELIGENCIA DE ACHAR MINAS */
-/* Se a casa já foi recursivamente visitada nada é feito */
-verificarVizinhos(L, C, Visitados, Visitados):-
-	member((L,C), Visitados).
 
-/* quando estrapola a linha não dá erro */
-verificarVizinhos(L, _, Visitados, Visitados) :- 
-	tabuleiro(N),
-	L > N.
-verificarVizinhos(L, _, Visitados, Visitados) :- L=<0.
+/* INTELIGENCIA DE ACHAR MINAS */
+verificarTodasCasasAbertasPorMinasAoRedor():-
+	current_predicate(casaAberta/2),!,
+	findall([X,Y],casaAberta(X,Y), L), 
+	loopVerificaCasasComMinaAoRedor(L).
+verificarTodasCasasAbertasPorMinasAoRedor().
 
-/* quando estrapola a coluna também não dá erro */
-verificarVizinhos(_, C, Visitados, Visitados) :- 
-	tabuleiro(N),
-	C > N.
-verificarVizinhos(_, C, Visitados, Visitados) :- C=<0.
+loopVerificaCasasComMinaAoRedor([[X,Y]|L]) :- 
+	verificarMinasAoRedor(X,Y),
+	loopVerificaCasasComMinaAoRedor(L).
+loopVerificaCasasComMinaAoRedor([]).
 
-/* quando um valor é encontrado não propaga a recursão */
-verificarVizinhos(L, C, Visitados, [(L,C)|Visitados]):-
-	valor(L, C, N),
-	N \= 0,
-	verificaVizinhosPorMinas(L, C).
 
-/* quando nenhum valor é encontrado prossegue recursão */
-verificarVizinhos(L, C, Visitados, NovoVisitados):-
-	append([(L,C)], Visitados, Visitados2),
-	valor(L, C, 0),
-	Lantes is L-1,
-	Ldepois is L+1,
-	Cantes is C-1,
-	Cdepois is C+1,
-	verificarVizinhos(Lantes, Cantes, Visitados2, Visitados3),
-	verificarVizinhos(Lantes, C, Visitados3, Visitados4),
-	verificarVizinhos(Lantes, Cdepois, Visitados4, Visitados5),
-	verificarVizinhos(L, Cantes, Visitados5, Visitados6),
-	verificarVizinhos(L, Cdepois, Visitados6, Visitados7),
-	verificarVizinhos(Ldepois, Cantes, Visitados7, Visitados8),
-	verificarVizinhos(Ldepois, C, Visitados8, Visitados9),
-	verificarVizinhos(Ldepois, Cdepois, Visitados9, NovoVisitados).
-
-verificaVizinhosPorMinas(X,Y) :- 
+verificarMinasAoRedor(X,Y) :- 
 	current_predicate(casaAberta/2),
 	casaAberta(X,Y),
 	valor(X,Y,V), 
@@ -127,7 +137,7 @@ verificaVizinhosPorMinas(X,Y) :-
 	V = C,
 	loopInsereMina(L).
 
-verificaVizinhosPorMinas(_,_).
+verificarMinasAoRedor(_,_).
 
 loopInsereMina([X|L]) :- 
 	X = [],!,loopInsereMina(L).
@@ -157,6 +167,8 @@ casaFechada(_,Y,0,[]) :- tabuleiro(N), A is N+1, Y = A,!.
 casaFechada(X,Y,0,[]) :- current_predicate(casaAberta/2),casaAberta(X,Y),!.
 casaFechada(X,Y,1,[X,Y]).
  
+
+
 /* se há uma mina, encerra o jogo */
 posicao(L, C) :-
 	mina(L, C),
@@ -168,7 +180,6 @@ posicao(L, C) :-
 	valor(L, C, N),
 	N \= 0,
 	assertz(casaAberta(L,C)),
-	verificarVizinhos(L, C, [], _),
 	escreveJogada(L,C),	
 	escreveValor(L, C, N).
 
@@ -179,8 +190,7 @@ posicao(L, C) :-
 	/*assertz(casaAberta(L,C)), */
 	escreveJogada(L,C),
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
-	posicao_recursiva(L, C, [], _),
-	verificarVizinhos(L, C, [], _).
+	posicao_recursiva(L, C, [], _).
 
 /* quando estrapola a linha não dá erro */
 posicao(L, _) :- 
@@ -216,6 +226,7 @@ posicao_recursiva(_, C, Visitados, Visitados) :- C=<0.
 posicao_recursiva(L, C, Visitados, [(L,C)|Visitados]):-
 	valor(L, C, N),
 	N \= 0,
+	retractall(casaAberta(L,C)),
 	assertz(casaAberta(L,C)),
 	escreveValorPuro(L, C, N).
 
@@ -223,6 +234,7 @@ posicao_recursiva(L, C, Visitados, [(L,C)|Visitados]):-
 posicao_recursiva(L, C, Visitados, NovoVisitados):-
 	append([(L,C)], Visitados, Visitados2),
 	valor(L, C, 0),
+	retractall(casaAberta(L,C)),
 	assertz(casaAberta(L,C)),
 	escreveValorPuro(L, C, 0), /* é mesmo pra imprimir? */
 	Lantes is L-1,
