@@ -165,6 +165,7 @@ escreveValor(L, C, N) :-
 /**
 	Escreve valor lido no 'ambiente.pl'
 */
+escreveValorPuro(L, C, _) :- current_predicate(casaAberta/2), casaAberta(L,C).
 escreveValorPuro(L, C, N) :-
 	atom_concat('valor(', L, Str),
 	atom_concat(Str, ',', Str1),
@@ -345,15 +346,14 @@ posicao(L, C) :-
 posicao(L, C) :-
 	valor(L, C, N),
 	N \= 0,
-	assertz(casaAberta(L,C)),
 	escreveJogada(L,C),	
-	escreveValor(L, C, N).
+	escreveValor(L, C, N),
+	assertz(casaAberta(L,C)).
 
 /* quando há um '0' na casa, busca recursivamente */
 /* os vizinhos até achar todos os que têm valor */
 posicao(L, C) :-
 	valor(L, C, 0),
-	/*assertz(casaAberta(L,C)), */
 	escreveJogada(L,C),
 	escreverLinhaNoJogo('/*AMBIENTE*/'),
 	posicao_recursiva(L, C, [], _).
@@ -392,17 +392,17 @@ posicao_recursiva(_, C, Visitados, Visitados) :- C=<0.
 posicao_recursiva(L, C, Visitados, [(L,C)|Visitados]):-
 	valor(L, C, N),
 	N \= 0,
+	escreveValorPuro(L, C, N),
 	retractall(casaAberta(L,C)),
-	assertz(casaAberta(L,C)),
-	escreveValorPuro(L, C, N).
+	assertz(casaAberta(L,C)).
 
 /* quando nenhum valor é encontrado prossegue recursão */
 posicao_recursiva(L, C, Visitados, NovoVisitados):-
 	append([(L,C)], Visitados, Visitados2),
 	valor(L, C, 0),
+	escreveValorPuro(L, C, 0),
 	retractall(casaAberta(L,C)),
 	assertz(casaAberta(L,C)),
-	escreveValorPuro(L, C, 0),
 	Lantes is L-1,
 	Ldepois is L+1,
 	Cantes is C-1,
